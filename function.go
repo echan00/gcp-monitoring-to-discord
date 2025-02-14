@@ -75,16 +75,19 @@ func toDiscord(notification Notification) DiscordWebhook {
 	projectId := notification.Incident.ProjectID
 	if projectId == "" {
 		projectId = "-"
+		log.Printf("Warning: Empty ProjectID received")
 	}
 
 	policyName := notification.Incident.PolicyName
 	if policyName == "" {
 		policyName = "-"
+		log.Printf("Warning: Empty PolicyName received")
 	}
 
 	conditionName := notification.Incident.ConditionName
 	if conditionName == "" {
 		conditionName = "-"
+		log.Printf("Warning: Empty ConditionName received")
 	}
 
 	fields := []DiscordEmbedField{
@@ -133,6 +136,8 @@ func toDiscord(notification Notification) DiscordWebhook {
 	summary := "No summary available."
 	if notification.Incident.Summary != "" {
 		summary = notification.Incident.Summary
+	} else {
+		log.Printf("Warning: Empty Summary received")
 	}
 
 	return DiscordWebhook{
@@ -155,12 +160,16 @@ func toDiscord(notification Notification) DiscordWebhook {
 }
 
 func F(w http.ResponseWriter, r *http.Request) {
+	log.Printf("Received request: Method=%s, ContentType=%s", r.Method, r.Header.Get("Content-Type"))
+
 	authToken := os.Getenv("AUTH_TOKEN")
 	if authToken == "" {
 		log.Fatalln("`AUTH_TOKEN` is not set in the environment")
 	}
 
-	if r.URL.Query().Get("auth_token") != authToken {
+	receivedToken := r.URL.Query().Get("auth_token")
+	if receivedToken != authToken {
+		log.Printf("Auth token mismatch. Received: '%s'", receivedToken)
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("invalid request"))
 		return
@@ -176,7 +185,7 @@ func F(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if contentType := r.Header.Get("Content-Type"); r.Method != "POST" || contentType != "application/json" {
-		log.Printf("invalid method / content-type: %s / %s", r.Method, contentType)
+		log.Printf("Invalid method / content-type: %s / %s", r.Method, contentType)
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("invalid request"))
 		return
@@ -184,38 +193,47 @@ func F(w http.ResponseWriter, r *http.Request) {
 
 	var notification Notification
 	if err := json.NewDecoder(r.Body).Decode(&notification); err != nil {
-		log.Printf("error decoding notification: %v", err)
+		log.Printf("Error decoding notification: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("invalid request body"))
 		return
 	}
 
+	// Log the received notification
+	notificationJSON, _ := json.MarshalIndent(notification, "", "  ")
+	// log.Printf("Received notification:\n%s", string(notificationJSON))
+
 	discordWebhook := toDiscord(notification)
 
 	payload, err := json.Marshal(discordWebhook)
 	if err != nil {
-		log.Printf("error marshaling discord webhook: %v", err)
+		log.Printf("Error marshaling discord webhook: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
+	// Log the Discord webhook payload
+	// log.Printf("Sending Discord webhook:\n%s", string(payload))
+
 	res, err := http.Post(discordWebhookURL, "application/json", bytes.NewBuffer(payload))
 	if err != nil {
-		log.Printf("error posting to discord: %v", err)
+		log.Printf("Error posting to discord: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	defer res.Body.Close()
 
 	if res.StatusCode < 200 || res.StatusCode >= 300 {
-		log.Printf("unexpected discord response status: %d", res.StatusCode)
+		log.Printf("Unexpected Discord response status: %d", res.StatusCode)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
+	// log.Printf("Successfully sent to Discord with status: %d", res.StatusCode)
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(discordWebhook); err != nil {
-		log.Printf("error encoding response: %v", err)
+		log.Printf("Error encoding response: %v", err)
 	}
 }
