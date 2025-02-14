@@ -200,7 +200,7 @@ func F(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Log the received notification
-	notificationJSON, _ := json.MarshalIndent(notification, "", "  ")
+	// notificationJSON, _ := json.MarshalIndent(notification, "", "  ")
 	// log.Printf("Received notification:\n%s", string(notificationJSON))
 
 	discordWebhook := toDiscord(notification)
