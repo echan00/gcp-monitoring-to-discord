@@ -162,9 +162,9 @@ func toDiscord(notification Notification) DiscordWebhook {
 func F(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Received request: Method=%s, ContentType=%s", r.Method, r.Header.Get("Content-Type"))
 
-	authToken := os.Getenv("AUTH_TOKEN")
+	authToken := os.Getenv("GCP_AUTH_TOKEN")
 	if authToken == "" {
-		log.Fatalln("`AUTH_TOKEN` is not set in the environment")
+		log.Fatalln("`GCP_AUTH_TOKEN` is not set in the environment")
 	}
 
 	receivedToken := r.URL.Query().Get("auth_token")
