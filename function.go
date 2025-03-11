@@ -175,9 +175,9 @@ func F(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	discordWebhookURL := os.Getenv("DISCORD_WEBHOOK_URL")
+	discordWebhookURL := os.Getenv("GCP_DISCORD_WEBHOOK_URL")
 	if discordWebhookURL == "" {
-		log.Fatalln("`DISCORD_WEBHOOK_URL` is not set in the environment")
+		log.Fatalln("`GCP_DISCORD_WEBHOOK_URL` is not set in the environment")
 	}
 
 	if _, err := url.Parse(discordWebhookURL); err != nil {
